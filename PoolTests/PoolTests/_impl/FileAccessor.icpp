@@ -1,0 +1,37 @@
+#include "PoolTests/FileAccessor.h"
+
+namespace SourceXtractor {
+
+template <typename TFD>
+FileAccessor<TFD>::FileAccessor(TFD&& fd, ReleaseDescriptorCallback release_callback)
+    : m_fd(std::move(fd)), m_release_callback(release_callback) {}
+
+template <typename TFD>
+FileReadAccessor<TFD>::FileReadAccessor(TFD&& fd, ReleaseDescriptorCallback release_callback, SharedLock lock)
+    : FileAccessor<TFD>(std::move(fd), release_callback), m_shared_lock(std::move(lock)) {}
+
+template <typename TFD>
+FileReadAccessor<TFD>::~FileReadAccessor() {
+  FileAccessor<TFD>::m_release_callback(std::move(FileAccessor<TFD>::m_fd));
+}
+
+template <typename TFD>
+bool FileReadAccessor<TFD>::isReadOnly() const {
+  return true;
+}
+
+template <typename TFD>
+FileWriteAccessor<TFD>::FileWriteAccessor(TFD&& fd, ReleaseDescriptorCallback release_callback, UniqueLock lock)
+    : FileAccessor<TFD>(std::move(fd), release_callback), m_unique_lock(std::move(lock)) {}
+
+template <typename TFD>
+FileWriteAccessor<TFD>::~FileWriteAccessor<TFD>() {
+  FileAccessor<TFD>::m_release_callback(std::move(FileAccessor<TFD>::m_fd));
+}
+
+template <typename TFD>
+bool FileWriteAccessor<TFD>::isReadOnly() const {
+  return false;
+}
+
+}  // end of namespace SourceXtractor
