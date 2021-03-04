@@ -21,19 +21,26 @@ bool FileHandler<TFD>::isReadOnly() const {
 }
 
 template <typename TFD>
-auto FileHandler<TFD>::getAccessor(bool write) -> std::unique_ptr<FileAccessorType> {
+auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorType> {
   std::lock_guard<std::mutex> this_lock(m_handler_mutex);
 
+  bool write_mode = mode & kWrite;
+  bool try_mode   = mode & 0b10;
+
   // If we are changing mode, we need to wait for everyone to be released and then close every file descriptor
-  if (write xor !m_is_readonly) {
-    UniqueLock unique_lock(m_file_mutex);
-    auto       manager_ptr = m_file_manager.lock();
+  if (write_mode xor !m_is_readonly) {
+    UniqueLock unique_lock(m_file_mutex, boost::defer_lock);
+    if (!try_mode)
+      unique_lock.lock();
+    else if (!unique_lock.try_lock())
+      return nullptr;
+    auto manager_ptr = m_file_manager.lock();
     assert(manager_ptr);
     for (auto& fd : m_available_fd) {
       manager_ptr->close(fd.first, fd.second);
     }
     m_available_fd.clear();
-    m_is_readonly = !write;
+    m_is_readonly = ((mode & 0b01) == kRead);
   }
 
   assert((!m_is_readonly && m_available_fd.size() <= 1) || m_is_readonly);
@@ -42,7 +49,7 @@ auto FileHandler<TFD>::getAccessor(bool write) -> std::unique_ptr<FileAccessorTy
   if (m_available_fd.empty()) {
     auto manager_ptr = m_file_manager.lock();
     assert(manager_ptr);
-    auto fd = manager_ptr->open<TFD>(m_path, write, [this](intptr_t id) { return this->close(id); });
+    auto fd = manager_ptr->open<TFD>(m_path, write_mode, [this](intptr_t id) { return this->close(id); });
     m_available_fd.emplace(std::move(fd));
   }
 
@@ -60,8 +67,8 @@ auto FileHandler<TFD>::getAccessor(bool write) -> std::unique_ptr<FileAccessorTy
   };
 
   std::unique_ptr<FileAccessorType> accessor;
-  if (write) {
-    UniqueLock unique_lock(m_file_mutex);
+  if (write_mode) {
+    UniqueLock unique_lock(m_file_mutex, boost::defer_lock_t());
     accessor = std::unique_ptr<FileWriteAccessor<TFD>>(
         new FileWriteAccessor<TFD>(std::move(fd.second), return_callback, std::move(unique_lock)));
   } else {
@@ -71,12 +78,6 @@ auto FileHandler<TFD>::getAccessor(bool write) -> std::unique_ptr<FileAccessorTy
   }
 
   return accessor;
-}
-
-template <typename TFD>
-auto FileHandler<TFD>::tryGetAccessor(bool write) -> std::unique_ptr<FileAccessorType> {
-  // TODO: Implement me
-  assert(false);
 }
 
 template <typename TFD>

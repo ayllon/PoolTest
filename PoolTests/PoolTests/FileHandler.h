@@ -26,6 +26,8 @@ class FileHandler {
 public:
   typedef FileAccessor<TFD> FileAccessorType;
 
+  enum Mode { kRead = 0b00, kWrite = 0b01, kTryRead = 0b10, kTryWrite = 0b11 };
+
   /**
    * Constructor
    * @param path
@@ -42,20 +44,14 @@ public:
 
   /**
    * Get a new FileAccessor
-   * @param write
-   *    If true, the file will be turned into write mode, so *only one accessor can be used*
+   * @param mode
+   *    The accessor mode. TryRead and TryWrite can be used if the caller does not want to block.
    * @return
    *    A new file accessor
    * @throws
    *    If opening the file fails
    */
-  std::unique_ptr<FileAccessorType> getAccessor(bool write = false);
-
-  /**
-   * Similar to getAccessor, but it will fail and return nullptr if the file is
-   * write-locked by someone else
-   */
-  std::unique_ptr<FileAccessorType> tryGetAccessor(bool write = false);
+  std::unique_ptr<FileAccessorType> getAccessor(Mode mode = kRead);
 
   /// @return true if the handler is open in read-only mode (default)
   bool isReadOnly() const;
