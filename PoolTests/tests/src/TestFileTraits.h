@@ -110,7 +110,7 @@ struct OpenCloseTrait<std::fstream> {
 
   // This two are not part of the original trait! They are here for convenience
   static void write(std::fstream& stream, const std::string& buf) {
-    stream << buf << std::endl;
+    stream << buf;
   }
 
   static std::string read(std::fstream& stream) {
