@@ -22,6 +22,11 @@ template <typename TFD>
 class FileAccessor {
 public:
   using ReleaseDescriptorCallback = std::function<void(TFD&&)>;
+  using SharedMutex               = boost::shared_mutex;
+  using SharedLock                = boost::shared_lock<SharedMutex>;
+  using UniqueLock                = boost::unique_lock<SharedMutex>;
+  using UpgradeLock               = boost::upgrade_lock<SharedMutex>;
+  using UpgradeToUniqueLock       = boost::upgrade_to_unique_lock<SharedMutex>;
 
   /// The wrapped file descriptor
   TFD m_fd;
@@ -51,13 +56,14 @@ protected:
 template <typename TFD>
 class FileReadAccessor : public FileAccessor<TFD> {
 public:
-  using ReleaseDescriptorCallback = typename FileAccessor<TFD>::ReleaseDescriptorCallback;
-  using SharedLock                = boost::shared_lock<boost::shared_mutex>;
+  typedef FileAccessor<TFD> Base_;
+  using ReleaseDescriptorCallback = typename Base_::ReleaseDescriptorCallback;
+  using SharedLock                = typename Base_::SharedLock;
 
   /**
    * Constructor
    * @param fd
-   *    File descriptor to own
+   *    File descriptor
    * @param release_callback
    *    Callback to be called at destruction
    * @param lock
@@ -90,13 +96,15 @@ private:
 template <typename TFD>
 class FileWriteAccessor : public FileAccessor<TFD> {
 public:
-  using ReleaseDescriptorCallback = typename FileAccessor<TFD>::ReleaseDescriptorCallback;
-  using UniqueLock                = boost::unique_lock<boost::shared_mutex>;
+  typedef FileAccessor<TFD> Base_;
+  using ReleaseDescriptorCallback = typename Base_::ReleaseDescriptorCallback;
+  using SharedLock                = typename Base_::SharedLock;
+  using UniqueLock                = typename Base_::UniqueLock;
 
   /**
    * Constructor
    * @param fd
-   *    File descriptor to own
+   *    File descriptor
    * @param release_callback
    *    Callback to be called at destruction
    * @param lock

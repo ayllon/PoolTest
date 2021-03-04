@@ -1,0 +1,27 @@
+#include "PoolTests/FileManager.h"
+#include <atomic>
+
+namespace SourceXtractor {
+
+template <typename TFD>
+std::pair<intptr_t, TFD> FileManager::open(const boost::filesystem::path& path, bool write,
+                                           std::function<bool(intptr_t)> request_close) {
+  static std::atomic<intptr_t> unique_id(1);
+
+  notifyIntentToOpen();
+
+  intptr_t id = unique_id++;
+  TFD      fd = OpenCloseTrait<TFD>::open(path, write);
+
+  FileMetadata meta{path, write, [id, request_close]() -> bool { return request_close(id); }};
+  notifyOpenedFile(id, std::move(meta));
+  return std::make_pair(id, std::move(fd));
+}
+
+template <typename TFD>
+void FileManager::close(intptr_t id, TFD& fd) {
+  OpenCloseTrait<TFD>::close(fd);
+  notifyClosedFile(id);
+}
+
+}  // end of namespace SourceXtractor

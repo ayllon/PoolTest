@@ -58,6 +58,10 @@ elements_add_unit_test(FileAccessorTest tests/src/FileAccessorTest.cpp
                       INCLUDE_DIRS ElementsKernel LibPoolTest
                       LINK_LIBRARIES LibPoolTest
                       TYPE Boost)
+elements_add_unit_test(FileHandlerTest tests/src/FileHandlerTest.cpp
+                      INCLUDE_DIRS ElementsKernel LibPoolTest
+                      LINK_LIBRARIES LibPoolTest
+                      TYPE Boost)
 
 #===============================================================================
 # Use the following macro for python modules, scripts and aux files:
