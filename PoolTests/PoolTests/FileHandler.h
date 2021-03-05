@@ -75,7 +75,7 @@ private:
    * @return
    *    false if it can not be closed (not in the available list)
    */
-  bool close(FileManager::FileId id);
+  bool canBeClosed(FileManager::FileId id);
 };
 
 }  // end of namespace SourceXtractor

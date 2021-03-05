@@ -23,15 +23,6 @@ public:
   }
 
   Elements::ExitCode mainMethod(std::map<std::string, variable_value>& args) override {
-    FileManager<int> system_pool;
-    //FilePool<fitsfile*> fitsptr_pool;
-    //FilePool<CFitsioFile> cfitsio_pool;
-    //FilePool<ELFitsFile> elfits_pool;
-
-    std::cout << "Limit: " << system_pool.limit() << std::endl;
-    auto fd = system_pool.getAccessor("/etc/hosts");
-    std::cout << "Used: " << system_pool.opened() << " " << fd->fd << std::endl;
-
     return Elements::ExitCode::OK;
   }
 

@@ -25,18 +25,18 @@ protected:
   void notifyOpenedFile(FileId file_id) override {
     BOOST_CHECK_EQUAL(n_notified, n_opened + 1);
     ++n_opened;
-    auto iter = m_files_iter.find(file_id);
-    BOOST_REQUIRE(iter != m_files_iter.end());
+    auto iter = m_files.find(file_id);
+    BOOST_REQUIRE(iter != m_files.end());
   }
 
   void notifyClosedFile(FileId file_id) override {
     BOOST_CHECK_LE(n_closed, n_opened);
     ++n_closed;
-    auto iter = m_files_iter.find(file_id);
-    BOOST_REQUIRE(iter == m_files_iter.end());
+    auto iter = m_files.find(file_id);
+    BOOST_REQUIRE(iter != m_files.end());
   }
 
-  void notifyUsed(FileId file_id) override {
+  void notifyUsed(FileId) override {
     ++n_used;
   }
 

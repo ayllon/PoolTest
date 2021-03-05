@@ -42,7 +42,7 @@ elements_add_library(LibPoolTest src/lib/*.cpp
 #                        INCLUDE_DIRS Boost ElementsExamples
 #                        LINK_LIBRARIES Boost ElementsExamples)
 #===============================================================================
-elements_add_executable(PoolTests src/program/*.cpp src/lib/*.cpp
+elements_add_executable(PoolTests src/program/*.cpp
                      INCLUDE_DIRS ElementsKernel
                      LINK_LIBRARIES LibPoolTest ElementsKernel)
 
@@ -59,6 +59,10 @@ elements_add_unit_test(FileAccessorTest tests/src/FileAccessorTest.cpp
                       LINK_LIBRARIES LibPoolTest
                       TYPE Boost)
 elements_add_unit_test(FileHandlerTest tests/src/FileHandlerTest.cpp
+                      INCLUDE_DIRS ElementsKernel LibPoolTest
+                      LINK_LIBRARIES LibPoolTest
+                      TYPE Boost)
+elements_add_unit_test(LRUFileManagerTest tests/src/LRUFileManagerTest.cpp
                       INCLUDE_DIRS ElementsKernel LibPoolTest
                       LINK_LIBRARIES LibPoolTest
                       TYPE Boost)

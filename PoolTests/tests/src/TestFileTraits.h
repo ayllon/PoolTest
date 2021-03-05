@@ -40,7 +40,7 @@ struct OpenCloseTrait<int> {
 
   // This two are not part of the original trait! They are here for convenience
   static void write(int& fd, const std::string& buf) {
-    if (::write(fd, buf.c_str(), buf.size()) < buf.size()) {
+    if (::write(fd, buf.c_str(), buf.size()) < static_cast<ssize_t>(buf.size())) {
       BOOST_ERROR(strerror(errno));
     }
   }
@@ -77,7 +77,7 @@ struct OpenCloseTrait<CfitsioLike*> {
 
   // This two are not part of the original trait! They are here for convenience
   static void write(CfitsioLike* ptr, const std::string& buf) {
-    if (::write(ptr->fd, buf.c_str(), buf.size()) < buf.size()) {
+    if (::write(ptr->fd, buf.c_str(), buf.size()) < static_cast<ssize_t>(buf.size())) {
       BOOST_ERROR(strerror(errno));
     }
   }

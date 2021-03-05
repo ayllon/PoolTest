@@ -8,9 +8,11 @@ struct FileManager::FileMetadata {
   boost::filesystem::path   m_path;
   bool                      m_write;
   Timestamp                 m_last_used;
+  uint64_t                  m_used_count;
   std::function<bool(void)> m_request_close;
 
-  FileMetadata(const boost::filesystem::path& path, bool write) : m_path(path), m_write(write), m_last_used(FileManager::Now()) {}
+  FileMetadata(const boost::filesystem::path& path, bool write)
+      : m_path(path), m_write(write), m_last_used(FileManager::Now()), m_used_count(0) {}
 };
 
 template <typename TFD>
@@ -26,8 +28,7 @@ auto FileManager::open(const boost::filesystem::path& path, bool write, std::fun
 
   {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_files.emplace_front(std::move(meta));
-    m_files_iter[id] = m_files.begin();
+    m_files[id] = std::move(meta);
   }
 
   notifyOpenedFile(id);
@@ -38,21 +39,16 @@ template <typename TFD>
 void FileManager::close(FileId id, TFD& fd) {
   OpenCloseTrait<TFD>::close(fd);
 
+  notifyClosedFile(id);
+
   std::unique_ptr<FileMetadata> meta;
   {
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto                        iter = m_files_iter.find(id);
-    assert(iter != m_files_iter.end());
-    std::swap(meta, *(iter->second));
-    m_files.erase(iter->second);
-    m_files_iter.erase(iter);
+    auto                        iter = m_files.find(id);
+    assert(iter != m_files.end());
+    std::swap(meta, iter->second);
+    m_files.erase(iter);
   }
-  notifyClosedFile(id);
-}
-
-void FileManager::notifyUsed(FileId id) {
-  // In principle a FileId should only be hold by a single thread, so no need to lock here
-  id->m_last_used = Now();
 }
 
 }  // end of namespace SourceXtractor
