@@ -1,27 +1,58 @@
+#include "AlexandriaKernel/memory_tools.h"
 #include "PoolTests/FileManager.h"
 #include <atomic>
 
 namespace SourceXtractor {
 
+struct FileManager::FileMetadata {
+  boost::filesystem::path   m_path;
+  bool                      m_write;
+  Timestamp                 m_last_used;
+  std::function<bool(void)> m_request_close;
+
+  FileMetadata(const boost::filesystem::path& path, bool write) : m_path(path), m_write(write), m_last_used(FileManager::Now()) {}
+};
+
 template <typename TFD>
-std::pair<intptr_t, TFD> FileManager::open(const boost::filesystem::path& path, bool write,
-                                           std::function<bool(intptr_t)> request_close) {
-  static std::atomic<intptr_t> unique_id(1);
+auto FileManager::open(const boost::filesystem::path& path, bool write, std::function<bool(FileId)> request_close)
+    -> std::pair<FileId, TFD> {
+  notifyIntentToOpen(write);
 
-  notifyIntentToOpen();
+  auto   meta           = Euclid::make_unique<FileMetadata>(path, write);
+  FileId id             = meta.get();
+  meta->m_request_close = [id, request_close]() -> bool { return request_close(id); };
 
-  intptr_t id = unique_id++;
-  TFD      fd = OpenCloseTrait<TFD>::open(path, write);
+  TFD fd = OpenCloseTrait<TFD>::open(path, write);
 
-  FileMetadata meta{path, write, [id, request_close]() -> bool { return request_close(id); }};
-  notifyOpenedFile(id, std::move(meta));
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_files.emplace_front(std::move(meta));
+    m_files_iter[id] = m_files.begin();
+  }
+
+  notifyOpenedFile(id);
   return std::make_pair(id, std::move(fd));
 }
 
 template <typename TFD>
-void FileManager::close(intptr_t id, TFD& fd) {
+void FileManager::close(FileId id, TFD& fd) {
   OpenCloseTrait<TFD>::close(fd);
+
+  std::unique_ptr<FileMetadata> meta;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    auto                        iter = m_files_iter.find(id);
+    assert(iter != m_files_iter.end());
+    std::swap(meta, *(iter->second));
+    m_files.erase(iter->second);
+    m_files_iter.erase(iter);
+  }
   notifyClosedFile(id);
+}
+
+void FileManager::notifyUsed(FileId id) {
+  // In principle a FileId should only be hold by a single thread, so no need to lock here
+  id->m_last_used = Now();
 }
 
 }  // end of namespace SourceXtractor

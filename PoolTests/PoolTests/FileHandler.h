@@ -61,12 +61,12 @@ private:
   using SharedLock  = typename FileAccessorType::SharedLock;
   using UniqueLock  = typename FileAccessorType::UniqueLock;
 
-  std::mutex                 m_handler_mutex;
-  boost::filesystem::path    m_path;
-  std::weak_ptr<FileManager> m_file_manager;
-  SharedMutex                m_file_mutex;
-  std::map<intptr_t, TFD>    m_available_fd;
-  bool                       m_is_readonly;
+  std::mutex                         m_handler_mutex;
+  boost::filesystem::path            m_path;
+  std::weak_ptr<FileManager>         m_file_manager;
+  SharedMutex                        m_file_mutex;
+  std::map<FileManager::FileId, TFD> m_available_fd;
+  bool                               m_is_readonly;
 
   /**
    * This is to be used by the FileManager to request the closing of a file descriptor
@@ -75,7 +75,7 @@ private:
    * @return
    *    false if it can not be closed (not in the available list)
    */
-  bool close(intptr_t id);
+  bool close(FileManager::FileId id);
 };
 
 }  // end of namespace SourceXtractor

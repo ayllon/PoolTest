@@ -24,8 +24,11 @@ template <typename TFD>
 auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorType> {
   std::lock_guard<std::mutex> this_lock(m_handler_mutex);
 
-  bool write_mode = mode & kWrite;
-  bool try_mode   = mode & 0b10;
+  auto manager_ptr = m_file_manager.lock();
+  bool write_mode  = mode & kWrite;
+  bool try_mode    = mode & 0b10;
+
+  assert(manager_ptr);
 
   // If we are changing mode, we need to wait for everyone to be released and then close every file descriptor
   if (write_mode xor !m_is_readonly) {
@@ -34,8 +37,7 @@ auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorTyp
       unique_lock.lock();
     else if (!unique_lock.try_lock())
       return nullptr;
-    auto manager_ptr = m_file_manager.lock();
-    assert(manager_ptr);
+
     for (auto& fd : m_available_fd) {
       manager_ptr->close(fd.first, fd.second);
     }
@@ -47,9 +49,7 @@ auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorTyp
 
   // Get one if none available
   if (m_available_fd.empty()) {
-    auto manager_ptr = m_file_manager.lock();
-    assert(manager_ptr);
-    auto fd = manager_ptr->open<TFD>(m_path, write_mode, [this](intptr_t id) { return this->close(id); });
+    auto fd = manager_ptr->open<TFD>(m_path, write_mode, [this](FileManager::FileId id) { return this->close(id); });
     m_available_fd.emplace(std::move(fd));
   }
 
@@ -60,8 +60,8 @@ auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorTyp
   auto fd      = std::move(*avail_i);
   m_available_fd.erase(avail_i);
 
-  intptr_t id              = fd.first;
-  auto     return_callback = [this, id](TFD&& fd) {
+  FileManager::FileId id              = fd.first;
+  auto                return_callback = [this, id](TFD&& fd) {
     std::lock_guard<std::mutex> this_lock(m_handler_mutex);
     m_available_fd[id] = std::move(fd);
   };
@@ -77,11 +77,12 @@ auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorTyp
         new FileReadAccessor<TFD>(std::move(fd.second), return_callback, std::move(shared_lock)));
   }
 
+  manager_ptr->notifyUsed(id);
   return accessor;
 }
 
 template <typename TFD>
-bool FileHandler<TFD>::close(intptr_t id) {
+bool FileHandler<TFD>::close(FileManager::FileId id) {
   std::unique_lock<std::mutex> this_lock(m_handler_mutex);
   auto                         avail_i = m_available_fd.find(id);
   if (avail_i == m_available_fd.end())

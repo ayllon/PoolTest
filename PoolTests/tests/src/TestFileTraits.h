@@ -71,7 +71,7 @@ struct OpenCloseTrait<CfitsioLike*> {
     if (::close(ptr->fd) < 0) {
       BOOST_ERROR(strerror(errno));
     }
-    delete ptr->buffer;
+    delete[] ptr->buffer;
     delete ptr;
   }
 
@@ -83,6 +83,7 @@ struct OpenCloseTrait<CfitsioLike*> {
   }
 
   static std::string read(CfitsioLike* ptr) {
+    ::memset(ptr->buffer, 0, 1024);
     if (::read(ptr->fd, ptr->buffer, 1024) <= 0) {
       BOOST_ERROR(strerror(errno));
     }

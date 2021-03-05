@@ -17,25 +17,33 @@ using namespace SourceXtractor;
  */
 struct FileManagerMock : public FileManager {
 protected:
-  void notifyIntentToOpen() override {
+  void notifyIntentToOpen(bool) override {
     BOOST_CHECK_EQUAL(n_notified, n_opened);
     ++n_notified;
   }
 
-  void notifyOpenedFile(intptr_t intptr, FileMetadata&& metadata) override {
+  void notifyOpenedFile(FileId file_id) override {
     BOOST_CHECK_EQUAL(n_notified, n_opened + 1);
     ++n_opened;
-    // TODO: Metadata
+    auto iter = m_files_iter.find(file_id);
+    BOOST_REQUIRE(iter != m_files_iter.end());
   }
-  void notifyClosedFile(intptr_t intptr) override {
+
+  void notifyClosedFile(FileId file_id) override {
     BOOST_CHECK_LE(n_closed, n_opened);
     ++n_closed;
+    auto iter = m_files_iter.find(file_id);
+    BOOST_REQUIRE(iter == m_files_iter.end());
+  }
+
+  void notifyUsed(FileId file_id) override {
+    ++n_used;
   }
 
 public:
-  FileManagerMock() : n_opened(0), n_closed(0), n_notified(0) {}
+  FileManagerMock() : n_opened(0), n_closed(0), n_notified(0), n_used(0) {}
 
-  unsigned n_opened, n_closed, n_notified;
+  unsigned n_opened, n_closed, n_notified, n_used;
 };
 
 /**
@@ -76,6 +84,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 0);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_opened, 1);
+  BOOST_CHECK_EQUAL(m_file_manager->n_used, 1);
 
   // Write twice
   // The handler should be reused
@@ -90,6 +99,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 0);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_opened, 1);
+  BOOST_CHECK_EQUAL(m_file_manager->n_used, 2);
 
   // We open for read, so the write handler should be closed and a new handler open
   auto read_accessor = handler.getAccessor(FileHandler<T>::kRead);
@@ -97,6 +107,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 2);
   BOOST_CHECK_EQUAL(m_file_manager->n_opened, 2);
+  BOOST_CHECK_EQUAL(m_file_manager->n_used, 3);
 
   BOOST_REQUIRE(read_accessor);
   BOOST_CHECK(handler.isReadOnly());
@@ -111,6 +122,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 3);
   BOOST_CHECK_EQUAL(m_file_manager->n_opened, 3);
+  BOOST_CHECK_EQUAL(m_file_manager->n_used, 4);
 }
 
 //-----------------------------------------------------------------------------
@@ -135,6 +147,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteBlock, T, file_descriptor_types, FileH
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 2);
   BOOST_CHECK_EQUAL(m_file_manager->n_opened, 2);
+  BOOST_CHECK_EQUAL(m_file_manager->n_used, 2);
 
   // Should not be able to open to write because the file is kept by read_accessor
   auto write_accessor = handler.getAccessor(FileHandler<T>::kTryWrite);

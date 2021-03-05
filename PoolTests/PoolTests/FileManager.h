@@ -6,6 +6,7 @@
 #define POOLTESTS_FILEMANAGER_H
 
 #include <boost/filesystem/path.hpp>
+#include <list>
 
 namespace SourceXtractor {
 
@@ -30,22 +31,28 @@ struct OpenCloseTrait {
  */
 class FileManager {
 public:
-  template <typename TFD>
-  std::pair<intptr_t, TFD> open(const boost::filesystem::path& path, bool write, std::function<bool(intptr_t)> request_close);
+  struct FileMetadata;
+  using FileId = FileMetadata*;
 
   template <typename TFD>
-  void close(intptr_t id, TFD& fd);
+  std::pair<FileId, TFD> open(const boost::filesystem::path& path, bool write, std::function<bool(FileId)> request_close);
+
+  template <typename TFD>
+  void close(FileId id, TFD& fd);
+
+  virtual void notifyUsed(FileId id);
 
 protected:
-  struct FileMetadata {
-    boost::filesystem::path   m_path;
-    bool                      m_write;
-    std::function<bool(void)> m_request_close;
-  };
+  using Timestamp           = std::chrono::steady_clock::time_point;
+  static constexpr auto Now = std::chrono::steady_clock::now;
 
-  virtual void notifyIntentToOpen()                       = 0;
-  virtual void notifyOpenedFile(intptr_t, FileMetadata&&) = 0;
-  virtual void notifyClosedFile(intptr_t)                 = 0;
+  std::mutex                                                           m_mutex;
+  std::list<std::unique_ptr<FileMetadata>>                             m_files;
+  std::map<FileId, std::list<std::unique_ptr<FileMetadata>>::iterator> m_files_iter;
+
+  virtual void notifyIntentToOpen(bool write) = 0;
+  virtual void notifyOpenedFile(FileId)       = 0;
+  virtual void notifyClosedFile(FileId)       = 0;
 };
 
 }  // end of namespace SourceXtractor
