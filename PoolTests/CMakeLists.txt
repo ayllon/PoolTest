@@ -66,6 +66,10 @@ elements_add_unit_test(LRUFileManagerTest tests/src/LRUFileManagerTest.cpp
                       INCLUDE_DIRS ElementsKernel LibPoolTest
                       LINK_LIBRARIES LibPoolTest
                       TYPE Boost)
+elements_add_unit_test(MultithreadTest tests/src/MultithreadTest.cpp
+                      INCLUDE_DIRS ElementsKernel LibPoolTest
+                      LINK_LIBRARIES LibPoolTest
+                      TYPE Boost)
 
 #===============================================================================
 # Use the following macro for python modules, scripts and aux files:

@@ -76,6 +76,9 @@ private:
    *    false if it can not be closed (not in the available list)
    */
   bool canBeClosed(FileManager::FileId id);
+
+  std::unique_ptr<FileAccessorType> getWriteAccessor(bool try_lock);
+  std::unique_ptr<FileAccessorType> getReadAccessor(bool try_lock);
 };
 
 }  // end of namespace SourceXtractor

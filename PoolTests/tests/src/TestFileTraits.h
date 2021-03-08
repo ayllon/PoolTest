@@ -6,7 +6,9 @@
 #define POOLTESTS_TESTFILETRAITS_H
 
 #include "ElementsKernel/Exception.h"
+#include <boost/test/unit_test.hpp>
 #include <fcntl.h>
+#include <fstream>
 #include <string>
 
 namespace SourceXtractor {

@@ -6,7 +6,6 @@
 #include "ElementsKernel/Temporary.h"
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
-#include <fstream>
 
 #include "TestFileTraits.h"
 

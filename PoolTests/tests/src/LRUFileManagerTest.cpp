@@ -5,7 +5,6 @@
 #include "PoolTests/LRUFileManager.h"
 #include "ElementsKernel/Temporary.h"
 #include <boost/test/unit_test.hpp>
-#include <fstream>
 
 #include "TestFileTraits.h"
 
