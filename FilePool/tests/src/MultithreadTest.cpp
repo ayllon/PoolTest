@@ -28,7 +28,7 @@
 using namespace SourceXtractor;
 
 static int randInt(int min, int max) {
-  boost::random::mt19937                    s_rng;
+  boost::random::mt19937                    s_rng(time(NULL));
   boost::random::uniform_int_distribution<> dist(min, max);
   return dist(s_rng);
 }
