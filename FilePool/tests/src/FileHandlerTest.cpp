@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "PoolTests/FileHandler.h"
+#include "FilePool/FileHandler.h"
 #include "ElementsKernel/Temporary.h"
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>

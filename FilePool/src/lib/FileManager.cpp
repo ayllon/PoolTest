@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "PoolTests/FileManager.h"
+#include "FilePool/FileManager.h"
 
 namespace SourceXtractor {
 

@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "PoolTests/LRUFileManager.h"
+#include "FilePool/LRUFileManager.h"
 #include "ElementsKernel/Exception.h"
 #include <sys/resource.h>
 

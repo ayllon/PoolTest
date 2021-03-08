@@ -12,4 +12,4 @@ find_package(ElementsProject)
 #                         elements_project(MyProject 1.0 USE Element 3.9)
 #===============================================================================
 
-elements_project(PoolTests 0.1 USE Alexandria 2.18.0 EL_FitsIO 3.0.0)
+elements_project(FilePool 0.1 USE Alexandria 2.18.0 EL_FitsIO 3.0.0)

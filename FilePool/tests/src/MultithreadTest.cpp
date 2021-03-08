@@ -17,8 +17,8 @@
  */
 
 #include "ElementsKernel/Temporary.h"
-#include "PoolTests/FileHandler.h"
-#include "PoolTests/LRUFileManager.h"
+#include "FilePool/FileHandler.h"
+#include "FilePool/LRUFileManager.h"
 #include <boost/random.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/thread.hpp>

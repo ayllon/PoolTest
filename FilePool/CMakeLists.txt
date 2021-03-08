@@ -6,7 +6,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.5)
 #   For declaring a project module:
 #         elements_subdir(ElementsExamples)
 #===============================================================================
-elements_subdir(PoolTests)
+elements_subdir(FilePool)
 
 #===============================================================================
 # Load elements_depends_on_subdirs macro here

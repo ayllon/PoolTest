@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "PoolTests/FileAccessor.h"
+#include "FilePool/FileAccessor.h"
 #include <boost/test/unit_test.hpp>
 
 using namespace SourceXtractor;
