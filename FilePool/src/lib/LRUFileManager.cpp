@@ -37,7 +37,6 @@ void LRUFileManager::notifyIntentToOpen(bool /*write*/) {
   std::unique_lock<std::mutex> lock(m_mutex);
 
   while (m_files.size() >= m_limit) {
-    // The front is the most recently used
     for (auto& id : m_sorted_ids) {
       auto& meta       = m_files[id];
       auto  close_call = meta->m_request_close;
