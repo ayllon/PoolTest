@@ -42,9 +42,6 @@ elements_add_library(LibPoolTest src/lib/*.cpp
 #                        INCLUDE_DIRS Boost ElementsExamples
 #                        LINK_LIBRARIES Boost ElementsExamples)
 #===============================================================================
-elements_add_executable(PoolTests src/program/*.cpp
-                     INCLUDE_DIRS ElementsKernel
-                     LINK_LIBRARIES LibPoolTest ElementsKernel)
 
 #===============================================================================
 # Declare the Boost tests here

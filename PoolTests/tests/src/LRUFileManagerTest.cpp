@@ -1,6 +1,20 @@
-//
-// Created by aalvarez on 05/03/2021.
-//
+/*
+ * Copyright (C) 2012-2021 Euclid Science Ground Segment
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 3.0 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
 
 #include "PoolTests/LRUFileManager.h"
 #include "ElementsKernel/Temporary.h"
@@ -46,7 +60,7 @@ BOOST_FIXTURE_TEST_CASE(TestLRU, LRUFixture) {
   // Open all files
   std::vector<FileManager::FileId> order_opened;
   for (auto& path : paths) {
-    auto pair = manager.open<int>(paths[0].path(), false, close_callback);
+    auto pair = manager.open<int>(path.path(), false, close_callback);
     descriptors.emplace(pair);
     order_opened.push_back(pair.first);
   }
@@ -121,9 +135,9 @@ BOOST_FIXTURE_TEST_CASE(TestLruMixed, LRUFixture) {
     return true;
   };
 
-  auto fd1 = manager.open<int>(paths[0].path(), false, close_callback);
-  auto fd2 = manager.open<CfitsioLike*>(paths[1].path(), false, close_callback);
-  auto fd3 = manager.open<std::fstream>(paths[2].path(), false, close_callback);
+  manager.open<int>(paths[0].path(), false, close_callback);
+  manager.open<CfitsioLike*>(paths[1].path(), false, close_callback);
+  manager.open<std::fstream>(paths[2].path(), false, close_callback);
 
   BOOST_CHECK_EQUAL(manager.limit(), 3);
   BOOST_CHECK_EQUAL(manager.used(), 3);
