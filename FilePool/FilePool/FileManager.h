@@ -135,8 +135,9 @@ protected:
    */
   std::map<boost::filesystem::path, std::weak_ptr<FileHandlerBase>> m_handlers;
 
-  // The standard guarantees that iterators to a list remain valid even after a sort,
-  // so the list can be safely sorted by the strategy implementations
+  /**
+   * Map a file id to its metadata
+   */
   std::map<FileId, std::unique_ptr<FileMetadata>> m_files;
 
   /// @warning

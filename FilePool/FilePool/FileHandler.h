@@ -98,9 +98,9 @@ private:
    * @param id
    *    ID of the file to close
    * @return
-   *    false if it can not be closed (not in the available list)
+   *    false if it can not be closed (i.e. in use)
    */
-  bool canBeClosed(FileManager::FileId id);
+  bool close(FileManager::FileId id);
 
   std::unique_ptr<FileAccessorType> getWriteAccessor(bool try_lock);
   std::unique_ptr<FileAccessorType> getReadAccessor(bool try_lock);

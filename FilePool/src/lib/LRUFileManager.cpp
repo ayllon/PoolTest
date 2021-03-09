@@ -39,16 +39,18 @@ void LRUFileManager::notifyIntentToOpen(bool /*write*/) {
   std::unique_lock<std::mutex> lock(m_mutex);
 
   while (m_files.size() >= m_limit) {
+    bool closed = false;
     for (auto& id : m_sorted_ids) {
       auto& meta       = m_files[id];
       auto  close_call = meta->m_request_close;
       lock.unlock();
-      if (close_call()) {
-        break;
-      }
+      closed = close_call();
       lock.lock();
+      // If the file was closed, the iterator on m_sorted_ids has been invalidated!
+      if (closed)
+        break;
     }
-    if (m_files.size() >= m_limit) {
+    if (!closed) {
       throw Elements::Exception() << "Limit reached and failed to close any existing file descriptor";
     }
   }

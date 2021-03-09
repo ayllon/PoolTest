@@ -62,7 +62,7 @@ auto FileHandler<TFD>::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAc
 
   // Open one file if we need
   if (m_available_fd.empty()) {
-    auto fd = m_file_manager->open<TFD>(m_path, true, [this](FileManager::FileId id) { return this->canBeClosed(id); });
+    auto fd = m_file_manager->open<TFD>(m_path, true, [this](FileManager::FileId id) { return this->close(id); });
     m_available_fd.emplace(std::move(fd));
   }
 
@@ -104,7 +104,7 @@ auto FileHandler<TFD>::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAcc
 
   // Open one file if we need
   if (m_available_fd.empty()) {
-    auto fd = m_file_manager->open<TFD>(m_path, false, [this](FileManager::FileId id) { return this->canBeClosed(id); });
+    auto fd = m_file_manager->open<TFD>(m_path, false, [this](FileManager::FileId id) { return this->close(id); });
     m_available_fd.emplace(std::move(fd));
   }
 
@@ -140,9 +140,14 @@ auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorTyp
 }
 
 template <typename TFD>
-bool FileHandler<TFD>::canBeClosed(FileManager::FileId id) {
+bool FileHandler<TFD>::close(FileManager::FileId id) {
   std::unique_lock<std::mutex> this_lock(m_handler_mutex);
-  return m_available_fd.count(id) > 0;
+  auto                         iter = m_available_fd.find(id);
+  if (iter == m_available_fd.end())
+    return false;
+  m_file_manager->close(iter->first, iter->second);
+  m_available_fd.erase(iter);
+  return true;
 }
 
 }  // end of namespace SourceXtractor
