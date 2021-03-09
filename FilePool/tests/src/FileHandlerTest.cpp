@@ -81,15 +81,15 @@ BOOST_AUTO_TEST_SUITE(FileHandlerTest)
 //-----------------------------------------------------------------------------
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, FileHandlerFixture) {
-  FileHandler<T> handler(m_path.path(), m_file_manager);
-  std::string    write_buffer("this is a string to be written to the nice file");
-  std::string    write_buffer2(" and another string to go there");
+  auto        handler = m_file_manager->getFileHandler<T>(m_path.path());
+  std::string write_buffer("this is a string to be written to the nice file");
+  std::string write_buffer2(" and another string to go there");
 
   // Write once
   {
-    auto write_accessor = handler.getAccessor(FileHandler<T>::kWrite);
+    auto write_accessor = handler->getAccessor(FileHandler<T>::kWrite);
     BOOST_REQUIRE(write_accessor);
-    BOOST_CHECK(!handler.isReadOnly());
+    BOOST_CHECK(!handler->isReadOnly());
     BOOST_CHECK(!write_accessor->isReadOnly());
     OpenCloseTrait<T>::write(write_accessor->m_fd, write_buffer);
   }
@@ -102,9 +102,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
   // Write twice
   // The handler should be reused
   {
-    auto write_accessor = handler.getAccessor(FileHandler<T>::kWrite);
+    auto write_accessor = handler->getAccessor(FileHandler<T>::kWrite);
     BOOST_REQUIRE(write_accessor);
-    BOOST_CHECK(!handler.isReadOnly());
+    BOOST_CHECK(!handler->isReadOnly());
     BOOST_CHECK(!write_accessor->isReadOnly());
     OpenCloseTrait<T>::write(write_accessor->m_fd, write_buffer2);
   }
@@ -115,7 +115,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
   BOOST_CHECK_EQUAL(m_file_manager->n_used, 2);
 
   // We open for read, so the write handler should be closed and a new handler open
-  auto read_accessor = handler.getAccessor(FileHandler<T>::kRead);
+  auto read_accessor = handler->getAccessor(FileHandler<T>::kRead);
 
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 2);
@@ -123,14 +123,14 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
   BOOST_CHECK_EQUAL(m_file_manager->n_used, 3);
 
   BOOST_REQUIRE(read_accessor);
-  BOOST_CHECK(handler.isReadOnly());
+  BOOST_CHECK(handler->isReadOnly());
   BOOST_CHECK(read_accessor->isReadOnly());
   auto content = OpenCloseTrait<T>::read(read_accessor->m_fd);
 
   BOOST_CHECK_EQUAL(content, write_buffer + write_buffer2);
 
   // We open another reader, so a new file descriptor is expected
-  auto read_accessor2 = handler.getAccessor(FileHandler<T>::kRead);
+  handler->getAccessor(FileHandler<T>::kRead);
 
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 3);
@@ -141,21 +141,22 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteReadTest, T, file_descriptor_types, Fi
 //-----------------------------------------------------------------------------
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteBlock, T, file_descriptor_types, FileHandlerFixture) {
-  FileHandler<T> handler(m_path.path(), m_file_manager);
-  std::string    write_buffer("this is a string to be written to the nice file");
-  std::string    write_buffer2(" and another string to go there");
+  auto        handler = m_file_manager->getFileHandler<T>(m_path.path());
+  std::string write_buffer("this is a string to be written to the nice file");
+  std::string write_buffer2(" and another string to go there");
 
   // Can write once
   {
-    auto write_accessor = handler.getAccessor(FileHandler<T>::kWrite);
+    auto write_accessor = handler->getAccessor(FileHandler<T>::kWrite);
     BOOST_REQUIRE(write_accessor);
-    BOOST_CHECK(!handler.isReadOnly());
+    BOOST_CHECK(!handler->isReadOnly());
     BOOST_CHECK(!write_accessor->isReadOnly());
     OpenCloseTrait<T>::write(write_accessor->m_fd, write_buffer);
   }
 
   // Open to read
-  auto read_accessor = handler.getAccessor(FileHandler<T>::kRead);
+  auto read_accessor = handler->getAccessor(FileHandler<T>::kRead);
+  BOOST_CHECK(read_accessor);
 
   BOOST_CHECK_EQUAL(m_file_manager->n_closed, 1);
   BOOST_CHECK_EQUAL(m_file_manager->n_notified, 2);
@@ -163,7 +164,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(OpenWriteBlock, T, file_descriptor_types, FileH
   BOOST_CHECK_EQUAL(m_file_manager->n_used, 2);
 
   // Should not be able to open to write because the file is kept by read_accessor
-  auto write_accessor = handler.getAccessor(FileHandler<T>::kTryWrite);
+  auto write_accessor = handler->getAccessor(FileHandler<T>::kTryWrite);
   BOOST_CHECK(write_accessor == nullptr);
 }
 

@@ -30,6 +30,7 @@ class FileHandler<FileDescriptor> {
 }
 
 interface FileManager {
+    + getFileHandler<FileDescriptor>(Path path) : FileHandler<FileDescriptor>
     + open<FileDescriptor>(Path path, bool write, Callback request_close) : Pair<FileId, FileDescriptor>
     + close<FileDescriptor>(FileId id, FileDescriptor fd)
     + {abstract} notifyUsed(FileId id)

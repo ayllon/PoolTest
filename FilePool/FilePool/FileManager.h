@@ -24,6 +24,12 @@
 
 namespace SourceXtractor {
 
+// Forward declaration
+class FileHandlerBase;
+
+template <typename TFD>
+class FileHandler;
+
 /**
  * This trait has to be implemented for all supported file descriptor types.
  * @tparam TFD
@@ -51,8 +57,34 @@ public:
   /// Opaque FileId, its concrete type should only be assumed to be copyable and hashable
   using FileId = FileMetadata*;
 
+  /// Constructor
+  FileManager();
+
   /// Destructor
   virtual ~FileManager();
+
+  /**
+   * Get a file handler
+   * @tparam TFD
+   *    File descriptor type
+   * @param path
+   *    File path
+   * @return
+   *    A FileHandler for the given file and with the requested file descriptor type
+   * @details
+   *    If there is already a FileHandler<TFD> for the given path, this will return the same
+   *    shared pointer as already in use. The FileHandler is thread-safe, so this is OK.
+   *    The path is normalized (no symlinks and no '.' or '..'), so this holds true even if
+   *    the same file is specified in different manners.
+   * @warning
+   *    The above is *not* true for hardlinks. If the same file is referenced by different paths that
+   *    are hardlinks to the same file, it will return different handlers, so there will be no read/write
+   *    protection in place.
+   * @throws Elements::Exception
+   *    If there is already a FileHandler with a *different* file descriptor type.
+   */
+  template <typename TFD>
+  std::shared_ptr<FileHandler<TFD>> getFileHandler(const boost::filesystem::path& path);
 
   /**
    * Open a file
@@ -93,9 +125,24 @@ protected:
   static constexpr auto Now = std::chrono::steady_clock::now;
 
   std::mutex m_mutex;
+
+  /**
+   * Map path / handler
+   * @details
+   *    The value is a std::weak_ptr because we are not really interested on keeping a handler
+   *    alive if no one is using it. However, if someone has a handler pointing to a file alive,
+   *    and someone else wants a handler to the same file, it should get the same handler.
+   */
+  std::map<boost::filesystem::path, std::weak_ptr<FileHandlerBase>> m_handlers;
+
   // The standard guarantees that iterators to a list remain valid even after a sort,
   // so the list can be safely sorted by the strategy implementations
   std::map<FileId, std::unique_ptr<FileMetadata>> m_files;
+
+  /// @warning
+  ///     Concrete implementations *must* call this on their destructors. Otherwise the FileHandlers will
+  ///     be destroyed after they are gone
+  void closeAll();
 
   virtual void notifyIntentToOpen(bool write) = 0;
   virtual void notifyOpenedFile(FileId)       = 0;

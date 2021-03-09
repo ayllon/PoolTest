@@ -59,6 +59,10 @@ elements_add_unit_test(FileHandlerTest tests/src/FileHandlerTest.cpp
                       INCLUDE_DIRS ElementsKernel LibPoolTest
                       LINK_LIBRARIES LibPoolTest
                       TYPE Boost)
+elements_add_unit_test(FileManagerTest tests/src/FileManagerTest.cpp
+                      INCLUDE_DIRS ElementsKernel LibPoolTest
+                      LINK_LIBRARIES LibPoolTest
+                      TYPE Boost)
 elements_add_unit_test(LRUFileManagerTest tests/src/LRUFileManagerTest.cpp
                       INCLUDE_DIRS ElementsKernel LibPoolTest
                       LINK_LIBRARIES LibPoolTest

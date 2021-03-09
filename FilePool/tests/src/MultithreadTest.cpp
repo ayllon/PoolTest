@@ -53,8 +53,7 @@ static void testThread(FileHandler<std::fstream>* path) {
     } catch (std::ios_base::failure& e) {
       char buffer[512];
       BOOST_ERROR(e.what() << ": " << strerror_r(errno, buffer, sizeof(buffer)));
-    }
-    catch (const Elements::Exception& e) {
+    } catch (const Elements::Exception& e) {
       // If we get unlucky, we can run out of file descriptors and have all used by others threads
       // That's ok, it is part of what's supposed to happen!
       BOOST_WARN(e.what());
@@ -72,19 +71,19 @@ BOOST_AUTO_TEST_SUITE(MultithreadTest)
 // Note that this is not a test per-se, but just a mechanism to exercise the file manager
 // and handlers to see if they work well under concurrency
 BOOST_AUTO_TEST_CASE(MultithreadTest) {
-  auto                                 manager       = std::make_shared<LRUFileManager>(10);
-  int                                  n_files       = randInt(2, 5);
-  int                                  total_threads = 0;
-  std::list<Elements::TempPath>        temp_files;
-  std::list<FileHandler<std::fstream>> handlers;
-  boost::thread_group                  thread_group;
+  auto                                                  manager       = std::make_shared<LRUFileManager>(10);
+  int                                                   n_files       = randInt(2, 5);
+  int                                                   total_threads = 0;
+  std::list<Elements::TempPath>                         temp_files;
+  std::list<std::shared_ptr<FileHandler<std::fstream>>> handlers;
+  boost::thread_group                                   thread_group;
 
   BOOST_TEST_MESSAGE("Running with " << n_files << " unique files");
   for (int i = 0; i < n_files; ++i) {
     temp_files.emplace_back();
     auto path = temp_files.back().path();
-    handlers.emplace_back(path, manager);
-    auto handler = &handlers.back();
+    handlers.emplace_back(manager->getFileHandler<std::fstream>(path));
+    auto handler = handlers.back().get();
 
     int n_threads = randInt(1, 5);
     total_threads += n_threads;

@@ -23,15 +23,14 @@
 namespace SourceXtractor {
 
 template <typename TFD>
-FileHandler<TFD>::FileHandler(const boost::filesystem::path& path, std::weak_ptr<FileManager> file_manager)
-    : m_path(path), m_file_manager(std::move(file_manager)), m_is_readonly(true) {}
+FileHandler<TFD>::FileHandler(const boost::filesystem::path& path, FileManager* file_manager)
+    : m_path(path), m_file_manager(file_manager), m_is_readonly(true) {}
 
 template <typename TFD>
 FileHandler<TFD>::~FileHandler() {
   std::lock_guard<std::mutex> this_lock(m_handler_mutex);
-  auto                        manager_ptr = m_file_manager.lock();
   for (auto& fd : m_available_fd) {
-    manager_ptr->close(fd.first, fd.second);
+    m_file_manager->close(fd.first, fd.second);
   }
 }
 
@@ -50,13 +49,10 @@ auto FileHandler<TFD>::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAc
 
   // The UniqueLock guarantees no-one else has access to the file and/or metadata
 
-  auto manager_ptr = m_file_manager.lock();
-  assert(manager_ptr);
-
   // If we have changed mode, we need to close all existing fd
   if (m_is_readonly) {
     for (auto& fd : m_available_fd) {
-      manager_ptr->close(fd.first, fd.second);
+      m_file_manager->close(fd.first, fd.second);
     }
     m_available_fd.clear();
     m_is_readonly = false;
@@ -66,7 +62,7 @@ auto FileHandler<TFD>::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAc
 
   // Open one file if we need
   if (m_available_fd.empty()) {
-    auto fd = manager_ptr->open<TFD>(m_path, true, [this](FileManager::FileId id) { return this->canBeClosed(id); });
+    auto fd = m_file_manager->open<TFD>(m_path, true, [this](FileManager::FileId id) { return this->canBeClosed(id); });
     m_available_fd.emplace(std::move(fd));
   }
 
@@ -81,7 +77,7 @@ auto FileHandler<TFD>::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAc
     m_available_fd[id] = std::move(returned_fd);
   };
 
-  manager_ptr->notifyUsed(id);
+  m_file_manager->notifyUsed(id);
   return std::unique_ptr<FileWriteAccessor<TFD>>(
       new FileWriteAccessor<TFD>(std::move(fd.second), return_callback, std::move(unique_lock)));
 }
@@ -97,13 +93,10 @@ auto FileHandler<TFD>::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAcc
   // There may be multiple threads here, since the lock is shared
   std::lock_guard<std::mutex> this_lock(m_handler_mutex);
 
-  auto manager_ptr = m_file_manager.lock();
-  assert(manager_ptr);
-
   // If we have changed mode, we need to close all existing fd
   if (!m_is_readonly) {
     for (auto& fd : m_available_fd) {
-      manager_ptr->close(fd.first, fd.second);
+      m_file_manager->close(fd.first, fd.second);
     }
     m_available_fd.clear();
     m_is_readonly = true;
@@ -111,7 +104,7 @@ auto FileHandler<TFD>::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAcc
 
   // Open one file if we need
   if (m_available_fd.empty()) {
-    auto fd = manager_ptr->open<TFD>(m_path, false, [this](FileManager::FileId id) { return this->canBeClosed(id); });
+    auto fd = m_file_manager->open<TFD>(m_path, false, [this](FileManager::FileId id) { return this->canBeClosed(id); });
     m_available_fd.emplace(std::move(fd));
   }
 
@@ -126,7 +119,7 @@ auto FileHandler<TFD>::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAcc
     m_available_fd[id] = std::move(returned_fd);
   };
 
-  manager_ptr->notifyUsed(id);
+  m_file_manager->notifyUsed(id);
   return std::unique_ptr<FileReadAccessor<TFD>>(
       new FileReadAccessor<TFD>(std::move(fd.second), return_callback, std::move(shared_lock)));
 }

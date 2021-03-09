@@ -27,6 +27,14 @@
 namespace SourceXtractor {
 
 /**
+ * Base for all FileHandlers
+ */
+class FileHandlerBase {
+public:
+  virtual ~FileHandlerBase() = default;
+};
+
+/**
  * Wraps a set of file descriptors. It should rely on a FileManager implementation
  * to do the opening/closing and policy handling of lifetimes. This is,
  * the FileManager implementation decides the policy on when to close a given file descriptor
@@ -36,22 +44,12 @@ namespace SourceXtractor {
  * figure it out.
  */
 template <typename TFD>
-class FileHandler {
+class FileHandler : public FileHandlerBase {
 public:
   typedef FileAccessor<TFD> FileAccessorType;
 
+  /// Open modes
   enum Mode { kRead = 0b00, kWrite = 0b01, kTryRead = 0b10, kTryWrite = 0b11 };
-
-  /**
-   * Constructor
-   * @param path
-   *    File path
-   * @param file_manager
-   *    FileManager implementation responsible for opening/closing and keeping track of
-   *    number of opened files. A FileHandler could survive the manager as long as no new
-   *    accessors are needed.
-   */
-  FileHandler(const boost::filesystem::path& path, std::weak_ptr<FileManager> file_manager);
 
   /// Destructor
   virtual ~FileHandler();
@@ -71,16 +69,29 @@ public:
   bool isReadOnly() const;
 
 private:
+  friend class FileManager;
+
   using SharedMutex = typename FileAccessorType::SharedMutex;
   using SharedLock  = typename FileAccessorType::SharedLock;
   using UniqueLock  = typename FileAccessorType::UniqueLock;
 
   std::mutex                         m_handler_mutex;
   boost::filesystem::path            m_path;
-  std::weak_ptr<FileManager>         m_file_manager;
+  FileManager*                       m_file_manager;
   SharedMutex                        m_file_mutex;
   std::map<FileManager::FileId, TFD> m_available_fd;
   bool                               m_is_readonly;
+
+  /**
+   * Constructor
+   * @param path
+   *    File path
+   * @param file_manager
+   *    FileManager implementation responsible for opening/closing and keeping track of
+   *    number of opened files. A FileHandler could survive the manager as long as no new
+   *    accessors are needed.
+   */
+  FileHandler(const boost::filesystem::path& path, FileManager* file_manager);
 
   /**
    * This is to be used by the FileManager to request the closing of a file descriptor

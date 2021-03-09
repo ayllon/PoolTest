@@ -31,7 +31,9 @@ LRUFileManager::LRUFileManager(unsigned limit) : m_limit(limit) {
   }
 }
 
-LRUFileManager::~LRUFileManager() {}
+LRUFileManager::~LRUFileManager() {
+  closeAll();
+}
 
 void LRUFileManager::notifyIntentToOpen(bool /*write*/) {
   std::unique_lock<std::mutex> lock(m_mutex);
