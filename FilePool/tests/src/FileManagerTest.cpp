@@ -59,7 +59,7 @@ BOOST_FIXTURE_TEST_CASE(DifferentFilesTest, FileManagerFixture) {
   BOOST_CHECK(hasHandler(temp1.path()));
   BOOST_CHECK(hasHandler(temp2.path()));
 
-  BOOST_CHECK(handler1 != nullptr & handler2 != nullptr);
+  BOOST_CHECK(handler1 != nullptr && handler2 != nullptr);
   BOOST_CHECK_NE(handler1, handler2);
 }
 
