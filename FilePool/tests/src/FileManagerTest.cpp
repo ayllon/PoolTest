@@ -46,8 +46,18 @@ BOOST_AUTO_TEST_SUITE(FileManagerTest)
 BOOST_FIXTURE_TEST_CASE(DifferentFilesTest, FileManagerFixture) {
   Elements::TempPath temp1, temp2;
 
+  BOOST_CHECK(!hasHandler(temp1.path()));
+  BOOST_CHECK(!hasHandler(temp2.path()));
+
   auto handler1 = getFileHandler<std::fstream>(temp1.path());
+
+  BOOST_CHECK(hasHandler(temp1.path()));
+  BOOST_CHECK(!hasHandler(temp2.path()));
+
   auto handler2 = getFileHandler<std::fstream>(temp2.path());
+
+  BOOST_CHECK(hasHandler(temp1.path()));
+  BOOST_CHECK(hasHandler(temp2.path()));
 
   BOOST_CHECK(handler1 != nullptr & handler2 != nullptr);
   BOOST_CHECK_NE(handler1, handler2);
@@ -58,11 +68,14 @@ BOOST_FIXTURE_TEST_CASE(DifferentFilesTest, FileManagerFixture) {
 BOOST_FIXTURE_TEST_CASE(SameHandlerTest, FileManagerFixture) {
   Elements::TempPath temp;
 
+  BOOST_CHECK(!hasHandler(temp.path()));
+
   auto handler1 = getFileHandler<std::fstream>(temp.path());
   auto handler2 = getFileHandler<std::fstream>(temp.path());
 
   BOOST_CHECK(handler1);
   BOOST_CHECK_EQUAL(handler1, handler2);
+  BOOST_CHECK(hasHandler(temp.path()));
 }
 
 //-----------------------------------------------------------------------------
@@ -71,6 +84,7 @@ BOOST_FIXTURE_TEST_CASE(SamePathDifferentTypeTest, FileManagerFixture) {
   Elements::TempPath temp;
   auto               handler1 = getFileHandler<std::fstream>(temp.path());
   BOOST_CHECK_THROW(getFileHandler<int>(temp.path()), Elements::Exception);
+  BOOST_CHECK(hasHandler(temp.path()));
 }
 
 //-----------------------------------------------------------------------------
@@ -86,6 +100,10 @@ BOOST_FIXTURE_TEST_CASE(RelativeSameHandlerTest, FileManagerFixture) {
   BOOST_TEST_MESSAGE(alternative.native());
 
   auto handler1 = getFileHandler<std::fstream>(temp.path());
+
+  BOOST_CHECK(hasHandler(temp.path()));
+  BOOST_CHECK(hasHandler(alternative));
+
   auto handler2 = getFileHandler<std::fstream>(alternative);
 
   BOOST_CHECK(handler1);
@@ -102,6 +120,10 @@ BOOST_FIXTURE_TEST_CASE(SymlinkSameHandlerTest, FileManagerFixture) {
   create_symlink(temp.path(), symlink.path());
 
   auto handler1 = getFileHandler<std::fstream>(temp.path());
+
+  BOOST_CHECK(hasHandler(temp.path()));
+  BOOST_CHECK(hasHandler(symlink.path()));
+
   auto handler2 = getFileHandler<std::fstream>(symlink.path());
 
   BOOST_CHECK(handler1);
@@ -112,14 +134,20 @@ BOOST_FIXTURE_TEST_CASE(SymlinkSameHandlerTest, FileManagerFixture) {
 
 BOOST_FIXTURE_TEST_CASE(NewHandlerTest, FileManagerFixture) {
   Elements::TempFile temp;
+
+  BOOST_CHECK(!hasHandler(temp.path()));
   {
     auto handler1 = getFileHandler<std::fstream>(temp.path());
     BOOST_CHECK(handler1);
+    BOOST_CHECK(hasHandler(temp.path()));
   }
+  // handler1 was the only reference, so when it got destroyed it should have been de-registered
+  BOOST_CHECK(!hasHandler(temp.path()));
   // Note that we use a different descriptor type, which should be fine if handler1 is gone
   // SamePathDifferentTypeTest checks this should not work if handler1 were alive
   auto handler2 = getFileHandler<int>(temp.path());
   BOOST_CHECK(handler2);
+  BOOST_CHECK(hasHandler(temp.path()));
 }
 
 //-----------------------------------------------------------------------------

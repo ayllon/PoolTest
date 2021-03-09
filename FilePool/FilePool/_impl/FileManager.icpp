@@ -55,7 +55,14 @@ std::shared_ptr<FileHandler<TFD>> FileManager::getFileHandler(const boost::files
   }
   // Either didn't exist or it is gone
   if (!handler_ptr) {
-    handler_ptr           = std::shared_ptr<FileHandler<TFD>>(new FileHandler<TFD>(canonical, this));
+    handler_ptr =
+        std::shared_ptr<FileHandler<TFD>>(new FileHandler<TFD>(canonical, this), [this, canonical](FileHandler<TFD>* obj) {
+          {
+            std::lock_guard<std::mutex> manager_lock(m_mutex);
+            m_handlers.erase(canonical);
+          }
+          delete obj;
+        });
     m_handlers[canonical] = handler_ptr;
   }
   return handler_ptr;

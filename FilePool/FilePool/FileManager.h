@@ -120,11 +120,17 @@ public:
    */
   virtual void notifyUsed(FileId id);
 
+  /**
+   * @return
+   *    True if the path has an associated handler
+   */
+  bool hasHandler(const boost::filesystem::path& path) const;
+
 protected:
   using Timestamp           = std::chrono::steady_clock::time_point;
   static constexpr auto Now = std::chrono::steady_clock::now;
 
-  std::mutex m_mutex;
+  mutable std::mutex m_mutex;
 
   /**
    * Map path / handler

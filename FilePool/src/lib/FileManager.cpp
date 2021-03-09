@@ -18,6 +18,7 @@
 
 #include "FilePool/FileManager.h"
 #include "FilePool/FileHandler.h"
+#include <boost/filesystem/operations.hpp>
 
 namespace SourceXtractor {
 
@@ -33,6 +34,13 @@ void FileManager::notifyUsed(FileId id) {
 
 void FileManager::closeAll() {
   m_handlers.clear();
+}
+
+bool FileManager::hasHandler(const boost::filesystem::path& path) const {
+  std::lock_guard<std::mutex> this_lock(m_mutex);
+  auto                        canonical = weakly_canonical(path);
+  auto                        iter      = m_handlers.find(canonical);
+  return iter != m_handlers.end();
 }
 
 }  // end of namespace SourceXtractor
