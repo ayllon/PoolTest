@@ -38,9 +38,9 @@ public:
 
   void notifyUsed(FileId id) override;
 
-  unsigned limit() const;
-  unsigned used() const;
-  unsigned available() const;
+  unsigned getLimit() const;
+  unsigned getUsed() const;
+  unsigned getAvailable() const;
 
 protected:
   void notifyIntentToOpen(bool write) override;

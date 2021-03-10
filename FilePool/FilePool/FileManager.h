@@ -21,6 +21,8 @@
 
 #include <boost/filesystem/path.hpp>
 #include <list>
+#include <map>
+#include <mutex>
 
 namespace SourceXtractor {
 
@@ -123,8 +125,8 @@ public:
   bool hasHandler(const boost::filesystem::path& path) const;
 
 protected:
-  using Timestamp           = std::chrono::steady_clock::time_point;
-  static constexpr auto Now = std::chrono::steady_clock::now;
+  using Clock     = std::chrono::steady_clock;
+  using Timestamp = Clock::time_point;
 
   mutable std::mutex m_mutex;
 

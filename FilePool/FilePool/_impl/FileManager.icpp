@@ -35,7 +35,7 @@ struct FileManager::FileMetadata {
   std::function<bool(void)> m_request_close;
 
   FileMetadata(const boost::filesystem::path& path, bool write)
-      : m_path(path), m_write(write), m_last_used(FileManager::Now()), m_used_count(0) {}
+      : m_path(path), m_write(write), m_last_used(Clock::now()), m_used_count(0) {}
 };
 
 template <typename TFD>

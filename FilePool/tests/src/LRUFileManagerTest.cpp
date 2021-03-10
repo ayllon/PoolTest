@@ -97,9 +97,9 @@ BOOST_FIXTURE_TEST_CASE(TestLRUMultiple, LRUFixture) {
     order_opened.push_back(pair.first);
   }
   BOOST_CHECK_EQUAL(order_closed.size(), 0);
-  BOOST_CHECK_EQUAL(manager.limit(), 3);
-  BOOST_CHECK_EQUAL(manager.used(), 3);
-  BOOST_CHECK_EQUAL(manager.available(), 0);
+  BOOST_CHECK_EQUAL(manager.getLimit(), 3);
+  BOOST_CHECK_EQUAL(manager.getUsed(), 3);
+  BOOST_CHECK_EQUAL(manager.getAvailable(), 0);
 
   // Re-use two and three
   manager.notifyUsed(order_opened[0]);
@@ -113,8 +113,8 @@ BOOST_FIXTURE_TEST_CASE(TestLRUMultiple, LRUFixture) {
   }
 
   BOOST_CHECK_EQUAL(order_closed.size(), 2);
-  BOOST_CHECK_EQUAL(manager.used(), 3);
-  BOOST_CHECK_EQUAL(manager.available(), 0);
+  BOOST_CHECK_EQUAL(manager.getUsed(), 3);
+  BOOST_CHECK_EQUAL(manager.getAvailable(), 0);
 
   // Since file 0 and 1 were re-used, the third opened should be gone first
   BOOST_CHECK_EQUAL(order_closed[0], order_opened[2]);
@@ -137,11 +137,17 @@ BOOST_FIXTURE_TEST_CASE(TestLruMixed, LRUFixture) {
 
   manager.open<int>(paths[0].path(), false, close_callback);
   manager.open<CfitsioLike*>(paths[1].path(), false, close_callback);
+#if !__GNUC__ || __GNUC__ > 4
   manager.open<std::fstream>(paths[2].path(), false, close_callback);
 
-  BOOST_CHECK_EQUAL(manager.limit(), 3);
-  BOOST_CHECK_EQUAL(manager.used(), 3);
-  BOOST_CHECK_EQUAL(manager.available(), 0);
+  BOOST_CHECK_EQUAL(manager.getLimit(), 3);
+  BOOST_CHECK_EQUAL(manager.getUsed(), 3);
+  BOOST_CHECK_EQUAL(manager.getAvailable(), 0);
+#else
+  BOOST_CHECK_EQUAL(manager.getLimit(), 3);
+  BOOST_CHECK_EQUAL(manager.getUsed(), 2);
+  BOOST_CHECK_EQUAL(manager.getAvailable(), 1);
+#endif
 }
 
 //-----------------------------------------------------------------------------

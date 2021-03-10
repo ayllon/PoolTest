@@ -72,7 +72,7 @@ void LRUFileManager::notifyClosedFile(FileManager::FileId id) {
 
 void LRUFileManager::notifyUsed(FileManager::FileId id) {
   // Update count
-  id->m_last_used = Now();
+  id->m_last_used = Clock::now();
   ++id->m_used_count;
 
   // Bring it to the back, since it is the last used
@@ -85,15 +85,15 @@ void LRUFileManager::notifyUsed(FileManager::FileId id) {
   --m_current_pos[id];
 }
 
-unsigned int LRUFileManager::limit() const {
+unsigned int LRUFileManager::getLimit() const {
   return m_limit;
 }
 
-unsigned int LRUFileManager::used() const {
+unsigned int LRUFileManager::getUsed() const {
   return m_sorted_ids.size();
 }
 
-unsigned int LRUFileManager::available() const {
+unsigned int LRUFileManager::getAvailable() const {
   return m_limit - m_sorted_ids.size();
 }
 

@@ -72,7 +72,11 @@ struct FileHandlerFixture {
 /**
  * Run the tests for this set of types
  */
+#if !__GNUC__ || __GNUC__ > 4
 typedef boost::mpl::list<int, CfitsioLike*, std::fstream> file_descriptor_types;
+#else
+typedef boost::mpl::list<int, CfitsioLike*> file_descriptor_types;
+#endif
 
 //-----------------------------------------------------------------------------
 
@@ -176,22 +180,22 @@ BOOST_FIXTURE_TEST_CASE(ReadDifferentType2, FileHandlerFixture) {
 
   // Can write once
   {
-    auto write_accessor = handler->getAccessor<std::fstream>(FileHandler::kWrite);
+    auto write_accessor = handler->getAccessor<int>(FileHandler::kWrite);
     BOOST_REQUIRE(write_accessor);
     BOOST_CHECK(!handler->isReadOnly());
     BOOST_CHECK(!write_accessor->isReadOnly());
-    write_accessor->m_fd << content;
+    OpenCloseTrait<int>::write(write_accessor->m_fd, content);
   }
 
   // Open as different types
-  auto read_stream = handler->getAccessor<std::fstream>(FileHandler::kRead);
+  auto read_stream = handler->getAccessor<CfitsioLike*>(FileHandler::kRead);
   auto read_int    = handler->getAccessor<int>(FileHandler::kRead);
 
   BOOST_REQUIRE(read_stream && read_int);
   BOOST_REQUIRE_NE(static_cast<void*>(read_stream.get()), static_cast<void*>(read_int.get()));
 
   // Read with both
-  auto stream_content = OpenCloseTrait<std::fstream>::read(read_stream->m_fd);
+  auto stream_content = OpenCloseTrait<CfitsioLike*>::read(read_stream->m_fd);
   auto int_content    = OpenCloseTrait<int>::read(read_int->m_fd);
 
   BOOST_CHECK_EQUAL(stream_content, content);
@@ -208,17 +212,17 @@ BOOST_FIXTURE_TEST_CASE(ReadDifferentTypes2, FileHandlerFixture) {
 
   // Can write once
   {
-    auto write_accessor = handler->getAccessor<std::fstream>(FileHandler::kWrite);
+    auto write_accessor = handler->getAccessor<int>(FileHandler::kWrite);
     BOOST_REQUIRE(write_accessor);
     BOOST_CHECK(!handler->isReadOnly());
     BOOST_CHECK(!write_accessor->isReadOnly());
-    write_accessor->m_fd << content;
+    OpenCloseTrait<int>::write(write_accessor->m_fd, content);
   }
 
   // Open as different types, but letting the first one go out of scope
   {
-    auto read_stream    = handler->getAccessor<std::fstream>(FileHandler::kRead);
-    auto stream_content = OpenCloseTrait<std::fstream>::read(read_stream->m_fd);
+    auto read_stream    = handler->getAccessor<CfitsioLike*>(FileHandler::kRead);
+    auto stream_content = OpenCloseTrait<CfitsioLike*>::read(read_stream->m_fd);
     BOOST_CHECK_EQUAL(stream_content, content);
   }
   // Only the write descriptor!

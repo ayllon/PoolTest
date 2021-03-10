@@ -38,17 +38,15 @@ static void testThread(FileHandler* handler) {
   for (int i = 0; i < niter; ++i) {
     try {
       {
-        auto write_acc = handler->getAccessor<std::fstream>(FileHandler::kWrite);
-        write_acc->m_fd.clear();
-        write_acc->m_fd.seekp(0);
-        write_acc->m_fd << boost::this_thread::get_id() << " writing something to this file time " << i << std::endl;
+        auto write_acc = handler->getAccessor<int>(FileHandler::kWrite);
+        lseek(write_acc->m_fd, 0, SEEK_SET);
+        OpenCloseTrait<int>::write(write_acc->m_fd, "writing something to this file");
       }
       {
-        std::string line;
-        auto        read_acc = handler->getAccessor<std::fstream>(FileHandler::kRead);
-        read_acc->m_fd.clear();
-        read_acc->m_fd.seekg(0);
-        std::getline(read_acc->m_fd, line);
+        auto read_acc = handler->getAccessor<int>(FileHandler::kRead);
+        lseek(read_acc->m_fd, 0, SEEK_SET);
+        auto line = OpenCloseTrait<int>::read(read_acc->m_fd);
+        BOOST_CHECK_GT(line.size(), 0);
       }
     } catch (std::ios_base::failure& e) {
       char buffer[512];

@@ -38,7 +38,7 @@ namespace SourceXtractor {
 class FileHandler {
 public:
   /// Open modes
-  enum Mode { kRead = 0b00, kWrite = 0b01, kTryRead = 0b10, kTryWrite = 0b11 };
+  enum Mode { kRead = 0, kWrite = 1, kTry = 2, kTryRead = kTry, kTryWrite = kTry | kWrite };
 
   /// Destructor
   virtual ~FileHandler();

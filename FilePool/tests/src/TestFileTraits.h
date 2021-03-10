@@ -107,6 +107,7 @@ struct OpenCloseTrait<CfitsioLike*> {
   }
 };
 
+#if !__GNUC__ || __GNUC__ > 4
 /**
  * Trait for a C++ file stream, which is movable but *not* copyable
  */
@@ -136,6 +137,8 @@ struct OpenCloseTrait<std::fstream> {
     return content;
   }
 };
+#endif
+
 }  // namespace SourceXtractor
 
 #endif  // POOLTESTS_TESTFILETRAITS_H

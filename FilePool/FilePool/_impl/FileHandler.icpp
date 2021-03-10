@@ -55,7 +55,8 @@ auto FileHandler::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAccesso
   // Open one file if we need
   if (m_available_fd.empty()) {
     auto fd = m_file_manager->open<TFD>(m_path, true, [this](FileManager::FileId id) { return this->close(id); });
-    m_available_fd.emplace(fd.first, new TypedFdWrapper<TFD>(fd.first, std::move(fd.second), m_file_manager));
+    m_available_fd[fd.first] =
+        std::unique_ptr<TypedFdWrapper<TFD>>(new TypedFdWrapper<TFD>(fd.first, std::move(fd.second), m_file_manager));
   }
 
   assert(m_available_fd.size() == 1);
@@ -68,7 +69,7 @@ auto FileHandler::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAccesso
 
   auto return_callback = [this, id](TFD&& returned_fd) {
     std::lock_guard<std::mutex> lambda_this_lock(m_handler_mutex);
-    m_available_fd.emplace(id, new TypedFdWrapper<TFD>(id, std::move(returned_fd), m_file_manager));
+    m_available_fd[id] = std::unique_ptr<TypedFdWrapper<TFD>>(new TypedFdWrapper<TFD>(id, std::move(returned_fd), m_file_manager));
   };
 
   m_file_manager->notifyUsed(id);
@@ -108,7 +109,7 @@ auto FileHandler::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAccessor
   if (!typed_ptr) {
     auto fd   = m_file_manager->open<TFD>(m_path, false, [this](FileManager::FileId id) { return this->close(id); });
     typed_ptr = new TypedFdWrapper<TFD>(fd.first, std::move(fd.second), m_file_manager);
-    avail_i   = m_available_fd.emplace(fd.first, typed_ptr).first;
+    avail_i   = m_available_fd.emplace(fd.first, std::unique_ptr<TypedFdWrapper<TFD>>(typed_ptr)).first;
   }
 
   assert(typed_ptr && avail_i != m_available_fd.end());
@@ -120,7 +121,7 @@ auto FileHandler::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAccessor
 
   auto return_callback = [this, id](TFD&& returned_fd) {
     std::lock_guard<std::mutex> lambda_this_lock(m_handler_mutex);
-    m_available_fd.emplace(id, new TypedFdWrapper<TFD>(id, std::move(returned_fd), m_file_manager));
+    m_available_fd[id] = std::unique_ptr<TypedFdWrapper<TFD>>(new TypedFdWrapper<TFD>(id, std::move(returned_fd), m_file_manager));
   };
 
   m_file_manager->notifyUsed(id);
@@ -130,7 +131,7 @@ auto FileHandler::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAccessor
 template <typename TFD>
 auto FileHandler::getAccessor(Mode mode) -> std::unique_ptr<FileAccessor<TFD>> {
   bool write_bool = mode & kWrite;
-  bool try_bool   = mode & 0b10;
+  bool try_bool   = mode & kTry;
 
   if (write_bool) {
     return getWriteAccessor<TFD>(try_bool);

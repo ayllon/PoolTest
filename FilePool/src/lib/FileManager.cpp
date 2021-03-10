@@ -20,6 +20,38 @@
 #include "FilePool/FileHandler.h"
 #include <boost/filesystem/operations.hpp>
 
+#if BOOST_VERSION < 106000
+/**
+ * weakly_canonical was introduced in 1.60.00
+ * Loosely based on boost implementation, but without optimizations
+ */
+boost::filesystem::path weakly_canonical(const boost::filesystem::path& path) {
+  auto                    iter = path.end();
+  boost::filesystem::path head = path;
+
+  for (; !head.empty(); --iter) {
+    if (boost::filesystem::exists(head)) {
+      break;
+    }
+    head.remove_filename();
+  }
+
+  if (head.empty())
+    return boost::filesystem::absolute(path);
+  head = boost::filesystem::canonical(head);
+
+  boost::filesystem::path tail;
+  for (; iter != path.end(); ++iter) {
+    tail /= *iter;
+  }
+
+  if (tail.empty())
+    return head;
+
+  return boost::filesystem::absolute(head / tail);
+}
+#endif
+
 namespace SourceXtractor {
 
 FileManager::FileManager() {}
@@ -28,7 +60,7 @@ FileManager::~FileManager() {}
 
 void FileManager::notifyUsed(FileId id) {
   // In principle a FileId should only be hold by a single thread, so no need to lock here
-  id->m_last_used = Now();
+  id->m_last_used = Clock::now();
   ++id->m_used_count;
 }
 
