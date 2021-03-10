@@ -23,36 +23,20 @@
 namespace SourceXtractor {
 
 template <typename TFD>
-FileHandler<TFD>::FileHandler(const boost::filesystem::path& path, FileManager* file_manager)
-    : m_path(path), m_file_manager(file_manager), m_is_readonly(true) {}
-
-template <typename TFD>
-FileHandler<TFD>::~FileHandler() {
-  std::lock_guard<std::mutex> this_lock(m_handler_mutex);
-  for (auto& fd : m_available_fd) {
-    m_file_manager->close(fd.first, fd.second);
-  }
-}
-
-template <typename TFD>
-bool FileHandler<TFD>::isReadOnly() const {
-  return m_is_readonly;
-}
-
-template <typename TFD>
-auto FileHandler<TFD>::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAccessorType> {
+auto FileHandler::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAccessor<TFD>> {
   UniqueLock unique_lock(m_file_mutex, boost::defer_lock);
-  if (try_lock && !unique_lock.try_lock())
+  if (try_lock && !unique_lock.try_lock()) {
     return nullptr;
-  else
+  } else {
     unique_lock.lock();
+  }
 
   // The UniqueLock guarantees no-one else has access to the file and/or metadata
 
   // If we have changed mode, we need to close all existing fd
   if (m_is_readonly) {
     for (auto& fd : m_available_fd) {
-      m_file_manager->close(fd.first, fd.second);
+      fd.second->close();
     }
     m_available_fd.clear();
     m_is_readonly = false;
@@ -60,30 +44,40 @@ auto FileHandler<TFD>::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAc
 
   assert(m_available_fd.size() <= 1);
 
+  // If there is one, but of a different type, close it
+  if (!m_available_fd.empty()) {
+    auto typed_ptr = dynamic_cast<TypedFdWrapper<TFD>*>(m_available_fd.begin()->second.get());
+    if (!typed_ptr) {
+      m_available_fd.clear();
+    }
+  }
+
   // Open one file if we need
   if (m_available_fd.empty()) {
     auto fd = m_file_manager->open<TFD>(m_path, true, [this](FileManager::FileId id) { return this->close(id); });
-    m_available_fd.emplace(std::move(fd));
+    m_available_fd.emplace(fd.first, new TypedFdWrapper<TFD>(fd.first, std::move(fd.second), m_file_manager));
   }
 
-  // Build and return accessor
-  auto avail_i = m_available_fd.begin();
-  auto fd      = std::move(*avail_i);
-  m_available_fd.erase(avail_i);
+  assert(m_available_fd.size() == 1);
 
-  FileManager::FileId id              = fd.first;
-  auto                return_callback = [this, id](TFD&& returned_fd) {
+  // Build and return accessor
+  auto typed_ptr = dynamic_cast<TypedFdWrapper<TFD>*>(m_available_fd.begin()->second.get());
+  auto fd        = std::move(typed_ptr->m_fd);
+  auto id        = typed_ptr->m_id;
+  m_available_fd.clear();
+
+  auto return_callback = [this, id](TFD&& returned_fd) {
     std::lock_guard<std::mutex> lambda_this_lock(m_handler_mutex);
-    m_available_fd[id] = std::move(returned_fd);
+    m_available_fd.emplace(id, new TypedFdWrapper<TFD>(id, std::move(returned_fd), m_file_manager));
   };
 
   m_file_manager->notifyUsed(id);
   return std::unique_ptr<FileWriteAccessor<TFD>>(
-      new FileWriteAccessor<TFD>(std::move(fd.second), return_callback, std::move(unique_lock)));
+      new FileWriteAccessor<TFD>(std::move(fd), return_callback, std::move(unique_lock)));
 }
 
 template <typename TFD>
-auto FileHandler<TFD>::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAccessorType> {
+auto FileHandler::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAccessor<TFD>> {
   SharedLock shared_lock(m_file_mutex, boost::defer_lock);
   if (try_lock && !shared_lock.try_lock())
     return nullptr;
@@ -96,58 +90,51 @@ auto FileHandler<TFD>::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAcc
   // If we have changed mode, we need to close all existing fd
   if (!m_is_readonly) {
     for (auto& fd : m_available_fd) {
-      m_file_manager->close(fd.first, fd.second);
+      fd.second->close();
     }
     m_available_fd.clear();
     m_is_readonly = true;
   }
 
-  // Open one file if we need
-  if (m_available_fd.empty()) {
-    auto fd = m_file_manager->open<TFD>(m_path, false, [this](FileManager::FileId id) { return this->close(id); });
-    m_available_fd.emplace(std::move(fd));
+  // Find the first with a matching type
+  TypedFdWrapper<TFD>*                                                typed_ptr = nullptr;
+  std::map<FileManager::FileId, std::unique_ptr<FdWrapper>>::iterator avail_i;
+  for (avail_i = m_available_fd.begin(); avail_i != m_available_fd.end() && !typed_ptr; ++avail_i) {
+    typed_ptr = dynamic_cast<TypedFdWrapper<TFD>*>(avail_i->second.get());
   }
 
+  // Open one file if we need
+  if (!typed_ptr) {
+    auto fd   = m_file_manager->open<TFD>(m_path, false, [this](FileManager::FileId id) { return this->close(id); });
+    typed_ptr = new TypedFdWrapper<TFD>(fd.first, std::move(fd.second), m_file_manager);
+    avail_i   = m_available_fd.emplace(fd.first, typed_ptr).first;
+  }
+
+  assert(typed_ptr && avail_i != m_available_fd.end());
+
   // Build and return accessor
-  auto avail_i = m_available_fd.begin();
-  auto fd      = std::move(*avail_i);
+  auto fd = std::move(typed_ptr->m_fd);
+  auto id = typed_ptr->m_id;
   m_available_fd.erase(avail_i);
 
-  FileManager::FileId id              = fd.first;
-  auto                return_callback = [this, id](TFD&& returned_fd) {
+  auto return_callback = [this, id](TFD&& returned_fd) {
     std::lock_guard<std::mutex> lambda_this_lock(m_handler_mutex);
-    m_available_fd[id] = std::move(returned_fd);
+    m_available_fd.emplace(id, new TypedFdWrapper<TFD>(id, std::move(returned_fd), m_file_manager));
   };
 
   m_file_manager->notifyUsed(id);
-  return std::unique_ptr<FileReadAccessor<TFD>>(
-      new FileReadAccessor<TFD>(std::move(fd.second), return_callback, std::move(shared_lock)));
+  return std::unique_ptr<FileReadAccessor<TFD>>(new FileReadAccessor<TFD>(std::move(fd), return_callback, std::move(shared_lock)));
 }
 
 template <typename TFD>
-auto FileHandler<TFD>::getAccessor(Mode mode) -> std::unique_ptr<FileAccessorType> {
-
+auto FileHandler::getAccessor(Mode mode) -> std::unique_ptr<FileAccessor<TFD>> {
   bool write_bool = mode & kWrite;
   bool try_bool   = mode & 0b10;
 
-  std::unique_ptr<FileAccessorType> acc;
   if (write_bool) {
-    acc = getWriteAccessor(try_bool);
-  } else {
-    acc = getReadAccessor(try_bool);
+    return getWriteAccessor<TFD>(try_bool);
   }
-  return acc;
-}
-
-template <typename TFD>
-bool FileHandler<TFD>::close(FileManager::FileId id) {
-  std::unique_lock<std::mutex> this_lock(m_handler_mutex);
-  auto                         iter = m_available_fd.find(id);
-  if (iter == m_available_fd.end())
-    return false;
-  m_file_manager->close(iter->first, iter->second);
-  m_available_fd.erase(iter);
-  return true;
+  return getReadAccessor<TFD>(try_bool);
 }
 
 }  // end of namespace SourceXtractor

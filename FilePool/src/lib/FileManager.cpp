@@ -36,6 +36,30 @@ void FileManager::closeAll() {
   m_handlers.clear();
 }
 
+std::shared_ptr<FileHandler> FileManager::getFileHandler(const boost::filesystem::path& path) {
+  auto canonical = weakly_canonical(path);
+
+  std::lock_guard<std::mutex>  lock(m_mutex);
+  auto                         i = m_handlers.find(canonical);
+  std::shared_ptr<FileHandler> handler_ptr;
+
+  if (i != m_handlers.end()) {
+    handler_ptr = i->second.lock();
+  }
+  // Either didn't exist or it is gone
+  if (!handler_ptr) {
+    handler_ptr           = std::shared_ptr<FileHandler>(new FileHandler(canonical, this), [this, canonical](FileHandler* obj) {
+      {
+        std::lock_guard<std::mutex> manager_lock(m_mutex);
+        m_handlers.erase(canonical);
+      }
+      delete obj;
+    });
+    m_handlers[canonical] = handler_ptr;
+  }
+  return handler_ptr;
+}
+
 bool FileManager::hasHandler(const boost::filesystem::path& path) const {
   std::lock_guard<std::mutex> this_lock(m_mutex);
   auto                        canonical = weakly_canonical(path);

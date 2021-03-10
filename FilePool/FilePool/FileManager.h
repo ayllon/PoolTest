@@ -25,9 +25,6 @@
 namespace SourceXtractor {
 
 // Forward declaration
-class FileHandlerBase;
-
-template <typename TFD>
 class FileHandler;
 
 /**
@@ -83,8 +80,7 @@ public:
    * @throws Elements::Exception
    *    If there is already a FileHandler with a *different* file descriptor type.
    */
-  template <typename TFD>
-  std::shared_ptr<FileHandler<TFD>> getFileHandler(const boost::filesystem::path& path);
+  std::shared_ptr<FileHandler> getFileHandler(const boost::filesystem::path& path);
 
   /**
    * Open a file
@@ -139,7 +135,7 @@ protected:
    *    alive if no one is using it. However, if someone has a handler pointing to a file alive,
    *    and someone else wants a handler to the same file, it should get the same handler.
    */
-  std::map<boost::filesystem::path, std::weak_ptr<FileHandlerBase>> m_handlers;
+  std::map<boost::filesystem::path, std::weak_ptr<FileHandler>> m_handlers;
 
   /**
    * Map a file id to its metadata

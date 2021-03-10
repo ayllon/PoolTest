@@ -24,6 +24,23 @@
 namespace SourceXtractor {
 
 /**
+ * Template-free base for all FileAccessors
+ */
+class FileAccessorBase {
+public:
+  using SharedMutex         = boost::shared_mutex;
+  using SharedLock          = boost::shared_lock<SharedMutex>;
+  using UniqueLock          = boost::unique_lock<SharedMutex>;
+  using UpgradeLock         = boost::upgrade_lock<SharedMutex>;
+  using UpgradeToUniqueLock = boost::upgrade_to_unique_lock<SharedMutex>;
+
+  virtual ~FileAccessorBase() = default;
+
+  /// @return true if the wrapped file descriptor is read-only
+  virtual bool isReadOnly() const = 0;
+};
+
+/**
  * Wraps a file descriptor, so when the instance is destroyed, the callback is
  * called with the wrapped descriptor moved-in
  * @tparam TFD
@@ -33,14 +50,9 @@ namespace SourceXtractor {
  *  as the locking mechanisms in each case should not bother the calling code
  */
 template <typename TFD>
-class FileAccessor {
+class FileAccessor : public FileAccessorBase {
 public:
   using ReleaseDescriptorCallback = std::function<void(TFD&&)>;
-  using SharedMutex               = boost::shared_mutex;
-  using SharedLock                = boost::shared_lock<SharedMutex>;
-  using UniqueLock                = boost::unique_lock<SharedMutex>;
-  using UpgradeLock               = boost::upgrade_lock<SharedMutex>;
-  using UpgradeToUniqueLock       = boost::upgrade_to_unique_lock<SharedMutex>;
 
   /// The wrapped file descriptor
   TFD m_fd;

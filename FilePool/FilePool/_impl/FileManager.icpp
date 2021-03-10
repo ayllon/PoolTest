@@ -39,36 +39,6 @@ struct FileManager::FileMetadata {
 };
 
 template <typename TFD>
-std::shared_ptr<FileHandler<TFD>> FileManager::getFileHandler(const boost::filesystem::path& path) {
-  auto canonical = weakly_canonical(path);
-
-  std::lock_guard<std::mutex>       lock(m_mutex);
-  auto                              i = m_handlers.find(canonical);
-  std::shared_ptr<FileHandler<TFD>> handler_ptr;
-
-  if (i != m_handlers.end()) {
-    auto base_ptr = i->second.lock();
-    handler_ptr   = std::dynamic_pointer_cast<FileHandler<TFD>>(base_ptr);
-    if (base_ptr && !handler_ptr) {
-      throw Elements::Exception() << "Can not keep multiple file handler types to the same underlying file " << canonical.native();
-    }
-  }
-  // Either didn't exist or it is gone
-  if (!handler_ptr) {
-    handler_ptr =
-        std::shared_ptr<FileHandler<TFD>>(new FileHandler<TFD>(canonical, this), [this, canonical](FileHandler<TFD>* obj) {
-          {
-            std::lock_guard<std::mutex> manager_lock(m_mutex);
-            m_handlers.erase(canonical);
-          }
-          delete obj;
-        });
-    m_handlers[canonical] = handler_ptr;
-  }
-  return handler_ptr;
-}
-
-template <typename TFD>
 auto FileManager::open(const boost::filesystem::path& path, bool write, std::function<bool(FileId)> request_close)
     -> std::pair<FileId, TFD> {
   notifyIntentToOpen(write);

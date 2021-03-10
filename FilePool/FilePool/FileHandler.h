@@ -27,14 +27,6 @@
 namespace SourceXtractor {
 
 /**
- * Base for all FileHandlers
- */
-class FileHandlerBase {
-public:
-  virtual ~FileHandlerBase() = default;
-};
-
-/**
  * Wraps a set of file descriptors. It should rely on a FileManager implementation
  * to do the opening/closing and policy handling of lifetimes. This is,
  * the FileManager implementation decides the policy on when to close a given file descriptor
@@ -43,11 +35,8 @@ public:
  * not* close a file being accessed, so it should just refuse to do so and let the FileManager
  * figure it out.
  */
-template <typename TFD>
-class FileHandler : public FileHandlerBase {
+class FileHandler {
 public:
-  typedef FileAccessor<TFD> FileAccessorType;
-
   /// Open modes
   enum Mode { kRead = 0b00, kWrite = 0b01, kTryRead = 0b10, kTryWrite = 0b11 };
 
@@ -63,7 +52,8 @@ public:
    * @throws
    *    If opening the file fails
    */
-  std::unique_ptr<FileAccessorType> getAccessor(Mode mode = kRead);
+  template <typename TFD>
+  std::unique_ptr<FileAccessor<TFD>> getAccessor(Mode mode = kRead);
 
   /// @return true if the handler is open in read-only mode (default)
   bool isReadOnly() const;
@@ -71,16 +61,36 @@ public:
 private:
   friend class FileManager;
 
-  using SharedMutex = typename FileAccessorType::SharedMutex;
-  using SharedLock  = typename FileAccessorType::SharedLock;
-  using UniqueLock  = typename FileAccessorType::UniqueLock;
+  using SharedMutex = typename FileAccessorBase::SharedMutex;
+  using SharedLock  = typename FileAccessorBase::SharedLock;
+  using UniqueLock  = typename FileAccessorBase::UniqueLock;
 
-  std::mutex                         m_handler_mutex;
-  boost::filesystem::path            m_path;
-  FileManager*                       m_file_manager;
-  SharedMutex                        m_file_mutex;
-  std::map<FileManager::FileId, TFD> m_available_fd;
-  bool                               m_is_readonly;
+  struct FdWrapper {
+    virtual ~FdWrapper() = default;
+
+    virtual void close() = 0;
+  };
+
+  template <typename TFD>
+  struct TypedFdWrapper : public FdWrapper {
+    FileManager::FileId m_id;
+    TFD                 m_fd;
+    FileManager*        m_file_manager;
+
+    TypedFdWrapper(FileManager::FileId id, TFD&& fd, FileManager* manager)
+        : m_id(id), m_fd(std::move(fd)), m_file_manager(manager) {}
+
+    void close() final {
+      m_file_manager->close(m_id, m_fd);
+    }
+  };
+
+  std::mutex                                                m_handler_mutex;
+  boost::filesystem::path                                   m_path;
+  FileManager*                                              m_file_manager;
+  SharedMutex                                               m_file_mutex;
+  std::map<FileManager::FileId, std::unique_ptr<FdWrapper>> m_available_fd;
+  bool                                                      m_is_readonly;
 
   /**
    * Constructor
@@ -102,8 +112,11 @@ private:
    */
   bool close(FileManager::FileId id);
 
-  std::unique_ptr<FileAccessorType> getWriteAccessor(bool try_lock);
-  std::unique_ptr<FileAccessorType> getReadAccessor(bool try_lock);
+  template <typename TFD>
+  std::unique_ptr<FileAccessor<TFD>> getWriteAccessor(bool try_lock);
+
+  template <typename TFD>
+  std::unique_ptr<FileAccessor<TFD>> getReadAccessor(bool try_lock);
 };
 
 }  // end of namespace SourceXtractor
