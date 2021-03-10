@@ -34,8 +34,8 @@ bool FileHandler::isReadOnly() const {
 }
 
 bool FileHandler::close(FileManager::FileId id) {
-  std::unique_lock<std::mutex> this_lock(m_handler_mutex);
-  auto                         iter = m_available_fd.find(id);
+  std::lock_guard<std::mutex> this_lock(m_handler_mutex);
+  auto                        iter = m_available_fd.find(id);
   if (iter == m_available_fd.end())
     return false;
   m_available_fd.erase(iter);

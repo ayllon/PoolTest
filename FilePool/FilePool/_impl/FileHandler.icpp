@@ -31,7 +31,7 @@ auto FileHandler::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAccesso
     unique_lock.lock();
   }
 
-  // The UniqueLock guarantees no-one else has access to the file and/or metadata
+  std::lock_guard<std::mutex> this_lock(m_handler_mutex);
 
   // If we have changed mode, we need to close all existing fd
   if (m_is_readonly) {
@@ -79,12 +79,12 @@ auto FileHandler::getWriteAccessor(bool try_lock) -> std::unique_ptr<FileAccesso
 template <typename TFD>
 auto FileHandler::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAccessor<TFD>> {
   SharedLock shared_lock(m_file_mutex, boost::defer_lock);
-  if (try_lock && !shared_lock.try_lock())
+  if (try_lock && !shared_lock.try_lock()) {
     return nullptr;
-  else
+  } else {
     shared_lock.lock();
+  }
 
-  // There may be multiple threads here, since the lock is shared
   std::lock_guard<std::mutex> this_lock(m_handler_mutex);
 
   // If we have changed mode, we need to close all existing fd
@@ -97,10 +97,11 @@ auto FileHandler::getReadAccessor(bool try_lock) -> std::unique_ptr<FileAccessor
   }
 
   // Find the first with a matching type
-  TypedFdWrapper<TFD>*                                                typed_ptr = nullptr;
-  std::map<FileManager::FileId, std::unique_ptr<FdWrapper>>::iterator avail_i;
-  for (avail_i = m_available_fd.begin(); avail_i != m_available_fd.end() && !typed_ptr; ++avail_i) {
-    typed_ptr = dynamic_cast<TypedFdWrapper<TFD>*>(avail_i->second.get());
+  TypedFdWrapper<TFD>* typed_ptr = nullptr;
+  auto                 avail_i   = m_available_fd.begin();
+  while (typed_ptr == nullptr && avail_i != m_available_fd.end()) {
+    if ((typed_ptr = dynamic_cast<TypedFdWrapper<TFD>*>(avail_i->second.get())) == nullptr)
+      ++avail_i;
   }
 
   // Open one file if we need
